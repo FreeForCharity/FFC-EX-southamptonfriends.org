@@ -92,7 +92,7 @@ jobs:
         timeout-minutes: 5
         run: |
           python3 - <<'PY'
-          import os, sys, time, socket, urllib.request, urllib.error
+          import os, sys, time, socket, http.client, urllib.request, urllib.error
           url = os.environ.get("DEPLOY_URL")
           if not url:
               print("DEPLOY_URL not set", file=sys.stderr)
@@ -124,9 +124,9 @@ jobs:
                       e.close()
                   except Exception:
                       pass
-              except (urllib.error.URLError, TimeoutError, socket.timeout) as e:
-                  last = str(e)
-                  print(f"Attempt {attempt} error: {e}")
+              except (urllib.error.URLError, TimeoutError, socket.timeout, http.client.HTTPException, ConnectionResetError, ConnectionAbortedError, ConnectionRefusedError) as e:
+                  last = f"{type(e).__name__}: {e!r}"
+                  print(f"Attempt {attempt} error: {type(e).__name__}: {e!r}")
               remaining = deadline - time.monotonic()
               if remaining <= 0:
                   print(f"Smoke check failed: {url} (last: {last})", file=sys.stderr)
