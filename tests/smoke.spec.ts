@@ -55,12 +55,12 @@ test.describe('Home page', () => {
 
 test.describe('Policy pages', () => {
   test('privacy policy renders', async ({ page }) => {
-    await page.goto('/privacy-policy')
+    await page.goto('/privacy-policy/')
     await expect(page.getByRole('heading', { name: /Privacy Policy/i })).toBeVisible()
   })
 
   test('terms of service renders', async ({ page }) => {
-    await page.goto('/terms-of-service')
+    await page.goto('/terms-of-service/')
     await expect(page.getByRole('heading', { name: /Terms of Service/i })).toBeVisible()
   })
 })
