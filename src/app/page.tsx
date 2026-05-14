@@ -1,14 +1,15 @@
-import React from 'react'
-// import HomePage from './Home/page'
-import HomePage from '@/app/home-page'
+import Hero from '@/components/Hero'
+import MeetingInfo from '@/components/MeetingInfo'
+import About from '@/components/About'
+import Contact from '@/components/Contact'
 
-const page = () => {
+export default function HomePage() {
   return (
-    <div>
-      {/* <HomePage /> */}
-      <HomePage />
-    </div>
+    <>
+      <Hero />
+      <MeetingInfo />
+      <About />
+      <Contact />
+    </>
   )
 }
-
-export default page

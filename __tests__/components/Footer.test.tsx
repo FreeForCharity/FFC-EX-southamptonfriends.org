@@ -3,59 +3,45 @@ import { render, screen } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 import Footer from '../../src/components/footer'
 
-// Extend Jest matchers
 expect.extend(toHaveNoViolations)
 
 describe('Footer component', () => {
-  it('should render the footer', () => {
+  it('renders a contentinfo landmark', () => {
     render(<Footer />)
-    const footer = screen.getByRole('contentinfo')
-    expect(footer).toBeInTheDocument()
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument()
   })
 
-  it('should display Endorsements section', () => {
+  it('shows the meeting address', () => {
     render(<Footer />)
-    expect(screen.getByText('Endorsements')).toBeInTheDocument()
+    expect(screen.getByText(/710 Gravel Hill Road/i)).toBeInTheDocument()
+    expect(screen.getByText(/Southampton, PA 18966/i)).toBeInTheDocument()
   })
 
-  it('should display Quick Links section', () => {
+  it('links to Philadelphia Yearly Meeting', () => {
     render(<Footer />)
-    expect(screen.getByText('Quick Links')).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /Philadelphia Yearly Meeting/i })
+    expect(link).toHaveAttribute('href', 'https://www.pym.org/')
   })
 
-  it('should display Contact Us section with contact information', () => {
+  it('links to Bucks Quarterly Meeting', () => {
     render(<Footer />)
-    expect(screen.getByText('Contact Us')).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /Bucks Quarterly Meeting/i })
+    expect(link).toHaveAttribute('href', 'http://www.quakersbucks.org/')
   })
 
-  it('should have social media links', () => {
+  it('links to the Facebook page', () => {
     render(<Footer />)
-    // Check for social media links by their aria-labels or visible text
-    const links = screen.getAllByRole('link')
-    expect(links.length).toBeGreaterThan(0)
+    const link = screen.getByRole('link', { name: /Facebook/i })
+    expect(link.getAttribute('href')).toMatch(/facebook\.com\/SouthamptonQuakers/i)
   })
 
-  it('should display the current year in copyright', () => {
+  it('shows the current year', () => {
     render(<Footer />)
-    const currentYear = new Date().getFullYear()
-    expect(screen.getByText(new RegExp(currentYear.toString()))).toBeInTheDocument()
+    const year = new Date().getFullYear().toString()
+    expect(screen.getByText(new RegExp(year))).toBeInTheDocument()
   })
 
-  it('should have GuideStar profile link', () => {
-    render(<Footer />)
-    const guidestarLink = screen.getByText(/GuideStar Profile/i)
-    expect(guidestarLink).toBeInTheDocument()
-  })
-
-  it('should have email contact link', () => {
-    render(<Footer />)
-    // Look for email link
-    const links = screen.getAllByRole('link')
-    const emailLink = links.find((link) => link.getAttribute('href')?.includes('mailto:'))
-    expect(emailLink).toBeDefined()
-  })
-
-  it('should not have accessibility violations', async () => {
+  it('has no accessibility violations', async () => {
     const { container } = render(<Footer />)
     const results = await axe(container)
     expect(results).toHaveNoViolations()
