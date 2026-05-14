@@ -1,0 +1,128 @@
+name: Post-Deploy Smoke Test
+
+on:
+  workflow_run:
+    workflows: ['Deploy to GitHub Pages']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to test (defaults to public/CNAME)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Determine smoke URL
+        id: url
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.url }}" ]; then
+            target="${{ inputs.url }}"
+          elif [ -f public/CNAME ]; then
+            cname=$(tr -d '[:space:]' < public/CNAME)
+            target="https://${cname}/"
+          else
+            echo "::error::No URL input and no public/CNAME — cannot determine smoke URL"
+            exit 1
+          fi
+          echo "url=$target" >> "$GITHUB_OUTPUT"
+          echo "Smoke target: $target"
+
+      - name: Probe live URL (HTTPS then HTTP)
+        id: probe
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          set -euo pipefail
+          html=""
+          status=""
+          # Try HTTPS first
+          status_https=$(curl -sI --max-time 30 -L "$URL" -o /dev/null -w "%{http_code}" || echo "000")
+          if [ "$status_https" = "200" ]; then
+            status="200"
+            html=$(curl -s --max-time 30 -L "$URL")
+            echo "scheme=https" >> "$GITHUB_OUTPUT"
+          else
+            echo "HTTPS returned $status_https — falling back to HTTP"
+            http_url="${URL/https:/http:}"
+            status_http=$(curl -sI --max-time 30 -L "$http_url" -o /dev/null -w "%{http_code}" || echo "000")
+            if [ "$status_http" = "200" ]; then
+              status="200"
+              html=$(curl -s --max-time 30 -L "$http_url")
+              echo "scheme=http" >> "$GITHUB_OUTPUT"
+              echo "::warning::HTTPS unavailable; smoked over HTTP. Cert may still be provisioning."
+            else
+              echo "::error::Neither HTTPS ($status_https) nor HTTP ($status_http) returned 200 for $URL"
+              exit 1
+            fi
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          # Save body for next step
+          printf '%s' "$html" > /tmp/page.html
+          echo "Body length: $(wc -c < /tmp/page.html) bytes"
+
+      - name: Assert no FFC-template-default content
+        env:
+          # Block the FFC charity-mission template's distinctive title.
+          # This is the exact regression the user flagged: staging.<domain> was
+          # serving the unmodified template instead of the per-charity migration.
+          FORBIDDEN_TITLE_FRAGMENT: 'Free For Charity | Reduce Costs, Increase Impact'
+          FORBIDDEN_BODY_FRAGMENT: 'Reduce Costs, Increase Impact'
+        run: |
+          set -euo pipefail
+          title=$(grep -ohE '<title>[^<]+</title>' /tmp/page.html | head -1 | sed -E 's/<\/?title>//g' || echo "")
+          echo "Page title: $title"
+          if echo "$title" | grep -qF "$FORBIDDEN_TITLE_FRAGMENT"; then
+            echo "::error::Live URL is serving the FFC charity-mission template default title."
+            echo "::error::Expected charity-specific content; got template default."
+            echo "::error::Title: $title"
+            exit 1
+          fi
+          # Defensive body check: the template tagline shouldn't appear in the body
+          if grep -qF "$FORBIDDEN_BODY_FRAGMENT" /tmp/page.html; then
+            echo "::warning::FFC template tagline 'Reduce Costs, Increase Impact' appears in body — manual review advised"
+          fi
+          echo "✓ Template-default content NOT present"
+
+      - name: Assert per-repo expected title (if configured)
+        env:
+          EXPECTED_TITLE_FRAGMENT: ${{ vars.SMOKE_EXPECTED_TITLE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$EXPECTED_TITLE_FRAGMENT" ]; then
+            echo "::notice::SMOKE_EXPECTED_TITLE repo variable not set — skipping per-repo title assertion"
+            exit 0
+          fi
+          title=$(grep -ohE '<title>[^<]+</title>' /tmp/page.html | head -1 | sed -E 's/<\/?title>//g' || echo "")
+          if ! echo "$title" | grep -qF "$EXPECTED_TITLE_FRAGMENT"; then
+            echo "::error::Expected title to contain '$EXPECTED_TITLE_FRAGMENT'; got '$title'"
+            exit 1
+          fi
+          echo "✓ Title contains expected fragment: $EXPECTED_TITLE_FRAGMENT"
+
+      - name: Smoke summary
+        if: always()
+        env:
+          URL: ${{ steps.url.outputs.url }}
+          SCHEME: ${{ steps.probe.outputs.scheme }}
+          STATUS: ${{ steps.probe.outputs.status }}
+        run: |
+          {
+            echo "## Post-Deploy Smoke Test"
+            echo ""
+            echo "- **URL:** $URL"
+            echo "- **Scheme served:** ${SCHEME:-n/a}"
+            echo "- **HTTP status:** ${STATUS:-n/a}"
+            echo "- **Job result:** ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
