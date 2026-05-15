@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Determine smoke URL
+      - name: Determine smoke URL (forces HTTPS)
         id: url
         run: |
           set -euo pipefail
@@ -36,40 +36,35 @@ jobs:
             echo "::error::No URL input and no public/CNAME — cannot determine smoke URL"
             exit 1
           fi
+          # Force https://
+          target="${target/http:\/\//https://}"
+          if [[ ! "$target" =~ ^https:// ]]; then
+            target="https://${target}"
+          fi
           echo "url=$target" >> "$GITHUB_OUTPUT"
           echo "Smoke target: $target"
 
-      - name: Probe live URL (HTTPS then HTTP)
+      - name: Probe live URL over HTTPS (no HTTP fallback)
         id: probe
         env:
           URL: ${{ steps.url.outputs.url }}
         run: |
           set -euo pipefail
-          html=""
-          status=""
-          # Try HTTPS first
-          status_https=$(curl -sI --max-time 30 -L "$URL" -o /dev/null -w "%{http_code}" || echo "000")
-          if [ "$status_https" = "200" ]; then
-            status="200"
-            html=$(curl -s --max-time 30 -L "$URL")
-            echo "scheme=https" >> "$GITHUB_OUTPUT"
-          else
-            echo "HTTPS returned $status_https — falling back to HTTP"
-            http_url="${URL/https:/http:}"
-            status_http=$(curl -sI --max-time 30 -L "$http_url" -o /dev/null -w "%{http_code}" || echo "000")
-            if [ "$status_http" = "200" ]; then
-              status="200"
-              html=$(curl -s --max-time 30 -L "$http_url")
-              echo "scheme=http" >> "$GITHUB_OUTPUT"
-              echo "::warning::HTTPS unavailable; smoked over HTTP. Cert may still be provisioning."
-            else
-              echo "::error::Neither HTTPS ($status_https) nor HTTP ($status_http) returned 200 for $URL"
-              exit 1
-            fi
-          fi
+          # HTTPS is required. No fallback to HTTP — real users in Chrome
+          # cannot reach an HTTP-only site if HSTS is set on the parent
+          # domain, and a missing GH Pages cert is a deployment failure.
+          status=$(curl -sI --max-time 30 -L "$URL" -o /dev/null -w "%{http_code}" 2>&1 || echo "000")
           echo "status=$status" >> "$GITHUB_OUTPUT"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::HTTPS probe failed: $URL returned HTTP $status"
+            echo "::error::The Pages cert is likely not yet provisioned, or DNS is misconfigured."
+            echo "::error::Check the repo's Pages settings: Settings -> Pages -> Custom domain"
+            echo "::error::and the Cloudflare CNAME record for the host."
+            exit 1
+          fi
           # Save body for next step
-          printf '%s' "$html" > /tmp/page.html
+          curl -s --max-time 30 -L "$URL" > /tmp/page.html
           echo "Body length: $(wc -c < /tmp/page.html) bytes"
 
       - name: Assert no FFC-template-default content
@@ -111,18 +106,55 @@ jobs:
           fi
           echo "✓ Title contains expected fragment: $EXPECTED_TITLE_FRAGMENT"
 
+      - name: Sitemap routes 200-check (every URL in sitemap.xml must HTTPS-resolve)
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          set -euo pipefail
+          base="${URL%/}"
+          sitemap_url="${base}/sitemap.xml"
+          sitemap=$(curl -s --max-time 30 -L "$sitemap_url" || true)
+          if ! echo "$sitemap" | grep -q "<loc>"; then
+            echo "::notice::No sitemap.xml found at $sitemap_url — skipping per-route check"
+            exit 0
+          fi
+          # Extract each <loc>, normalize to base host
+          mapfile -t locs < <(echo "$sitemap" | grep -oE "<loc>[^<]+</loc>" | sed -E 's/<\/?loc>//g')
+          host=$(echo "$base" | sed -E 's#^https?://([^/]+).*#\1#')
+          fail=0
+          checked=0
+          for loc in "${locs[@]}"; do
+            # Replace whatever host the sitemap emitted with our actual host
+            path=$(echo "$loc" | sed -E 's#^https?://[^/]+##')
+            [ -z "$path" ] && path="/"
+            url="https://${host}${path}"
+            code=$(curl -sI --max-time 15 -L "$url" -o /dev/null -w "%{http_code}" 2>&1 || echo "000")
+            if [ "$code" != "200" ]; then
+              # Try toggling trailing slash (some sitemaps drift from served form)
+              if [[ "$path" == */ ]]; then alt="${path%/}"; else alt="${path}/"; fi
+              code2=$(curl -sI --max-time 15 -L "https://${host}${alt}" -o /dev/null -w "%{http_code}" 2>&1 || echo "000")
+              if [ "$code2" = "200" ]; then
+                echo "::warning::Sitemap drift: $path emits $code but $alt is $code2"
+              else
+                echo "::error::Sitemap route $path returns $code (alt $alt → $code2)"
+                fail=$((fail + 1))
+              fi
+            fi
+            checked=$((checked + 1))
+          done
+          echo "Checked $checked routes; $fail failed"
+          if [ "$fail" -gt 0 ]; then exit 1; fi
+
       - name: Smoke summary
         if: always()
         env:
           URL: ${{ steps.url.outputs.url }}
-          SCHEME: ${{ steps.probe.outputs.scheme }}
           STATUS: ${{ steps.probe.outputs.status }}
         run: |
           {
             echo "## Post-Deploy Smoke Test"
             echo ""
             echo "- **URL:** $URL"
-            echo "- **Scheme served:** ${SCHEME:-n/a}"
-            echo "- **HTTP status:** ${STATUS:-n/a}"
+            echo "- **HTTPS status:** ${STATUS:-n/a}"
             echo "- **Job result:** ${{ job.status }}"
           } >> "$GITHUB_STEP_SUMMARY"
