@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Header from '@/components/header'
 import Footer from '@/components/footer'
@@ -57,6 +57,11 @@ export const metadata: Metadata = {
     apple: [{ url: `${basePath}/apple-icon.svg`, type: 'image/svg+xml' }],
   },
   manifest: `${basePath}/site.webmanifest`,
+}
+
+
+export const viewport: Viewport = {
+  themeColor: '#3f5a6d',
 }
 
 export default function RootLayout({
