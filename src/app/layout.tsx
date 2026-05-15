@@ -37,6 +37,20 @@ export const metadata: Metadata = {
     title: 'Southampton Friends Meeting',
     description:
       'A small Quaker meeting in Southampton, Pennsylvania. Worship at 10:00 AM every Sunday, in person and online.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Southampton Friends Meeting',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Southampton Friends Meeting',
+    description: 'A small Quaker meeting in Southampton, Pennsylvania.',
+    images: ['/og-image.png'],
   },
   icons: {
     icon: [
