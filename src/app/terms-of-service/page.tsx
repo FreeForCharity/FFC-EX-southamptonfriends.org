@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 export default function TermsOfService() {
   return (
     <div className="bg-paper">
-      <article className="sf-container max-w-[760px] py-16 md:py-20 sf-prose">
+      <article className="mx-auto px-4 max-w-[760px] py-16 md:py-20 sf-prose">
         <p className="font-(family-name:--font-lato) text-[0.72rem] uppercase tracking-[0.22em] text-stone">
           Site Information
         </p>
