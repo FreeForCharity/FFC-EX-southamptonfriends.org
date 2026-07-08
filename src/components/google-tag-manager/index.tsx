@@ -7,6 +7,8 @@ import { analyticsConfig } from '@/lib/analytics.config'
 const GTM_ID = analyticsConfig.gtmId
 
 export default function GoogleTagManager() {
+  // Nothing to load if the container id isn't configured (e.g. an unconfigured fork).
+  if (!GTM_ID) return null
   return (
     <>
       {/* Google Tag Manager Script - loaded with lazyOnload for better performance */}
@@ -29,6 +31,7 @@ export default function GoogleTagManager() {
 
 // Export a component for the noscript iframe that goes in the body
 export function GoogleTagManagerNoScript() {
+  if (!GTM_ID) return null
   return (
     <noscript>
       <iframe

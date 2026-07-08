@@ -77,6 +77,18 @@ describe('CookieConsent', () => {
     expect(within(dialog).queryByText(/Microsoft Clarity/i)).not.toBeInTheDocument()
   })
 
+  it('shows analytics enabled by default in Customize (opt-out), so a no-op Save keeps it on', () => {
+    render(<CookieConsent />)
+    fireEvent.click(screen.getByRole('button', { name: /customize/i }))
+    const toggle = screen.getByRole('checkbox', { name: /enable analytics cookies/i })
+    expect(toggle).toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: /save preferences/i }))
+    expect(lastAnalyticsStorage()).toBe('granted')
+    expect(JSON.parse(window.localStorage.getItem('cookie-consent') as string)).toMatchObject({
+      analytics: true,
+    })
+  })
+
   it('the banner has no accessibility violations', async () => {
     const { container } = render(<CookieConsent />)
     expect(await axe(container)).toHaveNoViolations()
