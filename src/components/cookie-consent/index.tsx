@@ -18,7 +18,7 @@ interface DataLayerEvent {
 // Extend Window interface to include dataLayer and openCookiePreferences
 declare global {
   interface Window {
-    dataLayer: DataLayerEvent[]
+    dataLayer?: DataLayerEvent[]
     openCookiePreferences?: () => void
   }
 }
@@ -32,8 +32,8 @@ interface CookiePreferences {
 // Consent Mode default: until the visitor chooses, tell GTM analytics is denied.
 function pushDefaultDenyConsent() {
   if (typeof window === 'undefined') return
-  window.dataLayer = window.dataLayer || []
-  window.dataLayer.push({
+  const dataLayer = (window.dataLayer = window.dataLayer || [])
+  dataLayer.push({
     event: 'consent_update',
     functional_consent: 'granted',
     analytics_consent: 'denied',
@@ -54,57 +54,52 @@ export default function CookieConsent() {
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
   const deleteAnalyticsCookies = useCallback(() => {
-    // List of static cookie names to delete
-    const cookiesToDelete = ['_ga', '_gid', '_fbp', 'fr', '_clck', '_clsk']
+    const host = window.location.hostname
+    // Expire a cookie across the domain variants GA may have used: no domain,
+    // the exact host, and the leading-dot host (GA sets _ga with domain=.example.org).
+    const expire = (name: string) => {
+      const stem = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+      document.cookie = `${stem};`
+      document.cookie = `${stem}; domain=${host};`
+      document.cookie = `${stem}; domain=.${host};`
+    }
 
-    // Delete static cookies
-    cookiesToDelete.forEach((name) => {
-      // Delete for current domain
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-      // Also try to delete with domain specification
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`
-    })
+    // Static analytics/marketing cookie names
+    ;['_ga', '_gid', '_fbp', 'fr', '_clck', '_clsk'].forEach(expire)
 
-    // Dynamically delete all cookies matching _ga_* (e.g., _ga_G-XXXXXXXXXX)
+    // Dynamically expire all cookies matching _ga_* (e.g., _ga_G-XXXXXXXXXX)
     if (typeof document !== 'undefined') {
       document.cookie.split(';').forEach((cookie) => {
         const cookieName = cookie.split('=')[0].trim()
-        if (cookieName.startsWith('_ga_')) {
-          // Delete for current domain
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-          // Also try to delete with domain specification
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`
-        }
+        if (cookieName.startsWith('_ga_')) expire(cookieName)
       })
     }
   }, [])
 
   const applyConsent = useCallback(
-    (prefs: CookiePreferences, previousPrefs?: CookiePreferences) => {
-      // Set a cookie to indicate consent status with Secure flag (only on HTTPS)
+    (prefs: CookiePreferences) => {
+      // Persist the choice (Secure only on HTTPS)
       const cookieValue = JSON.stringify(prefs)
       const secureFlag =
         typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
       document.cookie = `cookie-consent=${encodeURIComponent(cookieValue)}; path=/; max-age=31536000; SameSite=Lax${secureFlag}`
 
-      // Check if consent was withdrawn and delete cookies if needed
-      if (previousPrefs) {
-        if (previousPrefs.analytics && !prefs.analytics) {
-          deleteAnalyticsCookies()
-        }
+      // Whenever analytics is not consented — a fresh decline, a withdrawal, or a
+      // pre-existing _ga from before consent existed — clear the analytics cookies.
+      if (!prefs.analytics) {
+        deleteAnalyticsCookies()
       }
 
-      // Push consent update to GTM dataLayer
+      // Signal consent to GTM (Consent Mode). No script injection here: GA4 fires
+      // inside the GTM container; injecting gtag would double-count.
       if (typeof window !== 'undefined') {
-        window.dataLayer = window.dataLayer || []
-        window.dataLayer.push({
+        const dataLayer = (window.dataLayer = window.dataLayer || [])
+        dataLayer.push({
           event: 'consent_update',
           functional_consent: prefs.functional ? 'granted' : 'denied',
           analytics_consent: prefs.analytics ? 'granted' : 'denied',
         })
       }
-      // No script injection here: GA4 loads inside the GTM container. Consent is
-      // enforced by the dataLayer signal above (Consent Mode) and cookie deletion below.
     },
     [deleteAnalyticsCookies]
   )
@@ -139,10 +134,11 @@ export default function CookieConsent() {
           typeof savedPreferences.necessary === 'boolean' &&
           typeof savedPreferences.analytics === 'boolean'
         ) {
-          // Ensure functional is always true (for backward compatibility with old saved preferences)
-          // Create a new object to avoid mutation
+          // Force necessary + functional true (they are always-on); guards against
+          // corrupted/old saved data that stored them as false.
           const updatedPreferences: CookiePreferences = {
             ...savedPreferences,
+            necessary: true,
             functional: true,
           }
           setPreferences(updatedPreferences)
@@ -156,8 +152,12 @@ export default function CookieConsent() {
           }
         }
       } catch {
-        // If localStorage is unavailable or data is corrupted, show banner
-        if (showBannerIfMissing) setShowBanner(true)
+        // If localStorage is unavailable (e.g. private mode) still default to deny
+        // before showing the banner, so GTM/GA never runs without an explicit signal.
+        if (showBannerIfMissing) {
+          pushDefaultDenyConsent()
+          setShowBanner(true)
+        }
       }
     },
     [applyConsent]
@@ -194,24 +194,48 @@ export default function CookieConsent() {
       // Store the previously focused element
       previousFocusRef.current = document.activeElement as HTMLElement
 
+      const modal = modalRef.current
+      const getFocusable = () =>
+        Array.from(
+          modal.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute('disabled'))
+
       // Focus the first focusable element in the modal
-      const focusableElements = modalRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-      if (focusableElements.length > 0) {
-        ;(focusableElements[0] as HTMLElement).focus()
+      const focusable = getFocusable()
+      if (focusable.length > 0) {
+        focusable[0].focus()
       }
 
-      // Handle Escape key
-      const handleEscape = (e: KeyboardEvent) => {
+      // Handle Escape (close) and Tab (trap focus within the dialog)
+      const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           handleCancelPreferences()
+          return
+        }
+        if (e.key !== 'Tab') return
+        const items = getFocusable()
+        if (items.length === 0) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        const active = document.activeElement
+        if (e.shiftKey && active === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault()
+          first.focus()
+        } else if (!modal.contains(active)) {
+          // Focus escaped the dialog (e.g. from the page behind) — pull it back.
+          e.preventDefault()
+          first.focus()
         }
       }
-      document.addEventListener('keydown', handleEscape)
+      document.addEventListener('keydown', handleKeyDown)
 
       return () => {
-        document.removeEventListener('keydown', handleEscape)
+        document.removeEventListener('keydown', handleKeyDown)
         // Restore focus when modal closes
         if (previousFocusRef.current) {
           previousFocusRef.current.focus()
@@ -233,7 +257,7 @@ export default function CookieConsent() {
       // If localStorage is unavailable, continue anyway
       console.warn('Unable to save preferences to localStorage:', e)
     }
-    applyConsent(allAccepted, savedPreferencesBackup)
+    applyConsent(allAccepted)
     setSavedPreferencesBackup(allAccepted)
     setShowBanner(false)
   }
@@ -255,7 +279,7 @@ export default function CookieConsent() {
     // Delete third-party cookies when consent is withdrawn
     deleteAnalyticsCookies()
 
-    applyConsent(onlyNecessary, savedPreferencesBackup)
+    applyConsent(onlyNecessary)
     setSavedPreferencesBackup(onlyNecessary)
     setShowBanner(false)
   }
@@ -267,7 +291,7 @@ export default function CookieConsent() {
       // If localStorage is unavailable, continue anyway
       console.warn('Unable to save preferences to localStorage:', e)
     }
-    applyConsent(preferences, savedPreferencesBackup)
+    applyConsent(preferences)
     setSavedPreferencesBackup(preferences)
     setShowBanner(false)
     setShowPreferences(false)
