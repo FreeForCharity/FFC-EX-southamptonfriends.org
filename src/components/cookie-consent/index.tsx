@@ -51,7 +51,12 @@ function readStoredConsent(): string | null {
     // localStorage unavailable — fall through to the cookie
   }
   if (typeof document === 'undefined') return null
-  const entry = document.cookie.split('; ').find((c) => c.startsWith('cookie-consent='))
+  // Cookies are separated by ';' with optional whitespace — split on ';' then trim,
+  // so parsing works even when there is no space after the separator.
+  const entry = document.cookie
+    .split(';')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('cookie-consent='))
   if (!entry) return null
   try {
     return decodeURIComponent(entry.slice('cookie-consent='.length))
