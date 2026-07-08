@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Header from '@/components/header'
 import Footer from '@/components/footer'
+import GoogleTagManager, { GoogleTagManagerNoScript } from '@/components/google-tag-manager'
 import { faustina, lato, cantataOne } from '@/lib/fonts'
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
@@ -72,6 +73,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <GoogleTagManager />
+      </head>
       <body
         className={[
           'antialiased',
@@ -83,6 +87,7 @@ export default function RootLayout({
         ].join(' ')}
         suppressHydrationWarning={true}
       >
+        <GoogleTagManagerNoScript />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:text-ink focus:px-3 focus:py-2 focus:rounded focus:shadow"
