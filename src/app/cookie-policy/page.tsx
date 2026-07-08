@@ -43,9 +43,10 @@ export default function CookiePolicy() {
             consent because the site cannot function without them.
           </li>
           <li>
-            <strong>Analytics (consent-based).</strong> We use Google Tag Manager and Google
-            Analytics 4 to understand aggregate site usage. Analytics cookies (for example,{' '}
-            <code>_ga</code>) are set only after you consent through our cookie banner.
+            <strong>Analytics.</strong> We use Google Tag Manager and Google Analytics 4 to
+            understand aggregate site usage. Analytics cookies (for example, <code>_ga</code>) are
+            set by default, but you can decline them at any time through our cookie banner —
+            declining stops analytics on this browser and removes those cookies.
           </li>
           <li>
             <strong>Third-party.</strong> Some pages link to or embed outside services (for example,
