@@ -46,9 +46,14 @@ function updateConsentMode(analyticsGranted: boolean) {
 function readStoredConsent(): string | null {
   try {
     const ls = localStorage.getItem('cookie-consent')
-    if (ls) return ls
+    if (ls) {
+      // Only trust localStorage if it holds parseable JSON; a corrupt value must not
+      // shadow a still-valid cookie, so fall through to the cookie in that case.
+      JSON.parse(ls)
+      return ls
+    }
   } catch {
-    // localStorage unavailable — fall through to the cookie
+    // localStorage unavailable or corrupt — fall through to the cookie
   }
   if (typeof document === 'undefined') return null
   // Cookies are separated by ';' with optional whitespace — split on ';' then trim,
@@ -73,7 +78,12 @@ function clearStoredConsent() {
     // ignore — localStorage may be unavailable
   }
   if (typeof document !== 'undefined') {
-    document.cookie = 'cookie-consent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    // Expire across the same domain variants the cookie may have been set with.
+    const host = window.location.hostname
+    const stem = 'cookie-consent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/'
+    document.cookie = `${stem};`
+    document.cookie = `${stem}; domain=${host};`
+    document.cookie = `${stem}; domain=.${host};`
   }
 }
 
@@ -104,8 +114,8 @@ export default function CookieConsent() {
       document.cookie = `${stem}; domain=.${host};`
     }
 
-    // Static analytics/marketing cookie names
-    ;['_ga', '_gid', '_fbp', 'fr', '_clck', '_clsk'].forEach(expire)
+    // Google Analytics cookie names (this site's only analytics service)
+    ;['_ga', '_gid'].forEach(expire)
 
     // Dynamically expire all cookies matching _ga_* (e.g., _ga_G-XXXXXXXXXX)
     if (typeof document !== 'undefined') {
@@ -277,9 +287,9 @@ export default function CookieConsent() {
     setPreferences(allAccepted)
     try {
       localStorage.setItem('cookie-consent', JSON.stringify(allAccepted))
-    } catch (e) {
-      // If localStorage is unavailable, continue anyway
-      console.warn('Unable to save preferences to localStorage:', e)
+    } catch {
+      // localStorage unavailable (e.g. private mode) — the consent cookie still persists
+      // the choice, so continue silently.
     }
     applyConsent(allAccepted)
     setSavedPreferencesBackup(allAccepted)
@@ -295,9 +305,9 @@ export default function CookieConsent() {
     setPreferences(onlyNecessary)
     try {
       localStorage.setItem('cookie-consent', JSON.stringify(onlyNecessary))
-    } catch (e) {
-      // If localStorage is unavailable, continue anyway
-      console.warn('Unable to save preferences to localStorage:', e)
+    } catch {
+      // localStorage unavailable (e.g. private mode) — the consent cookie still persists
+      // the choice, so continue silently.
     }
 
     // applyConsent() deletes analytics cookies whenever analytics is not consented.
@@ -309,9 +319,9 @@ export default function CookieConsent() {
   const handleSavePreferences = () => {
     try {
       localStorage.setItem('cookie-consent', JSON.stringify(preferences))
-    } catch (e) {
-      // If localStorage is unavailable, continue anyway
-      console.warn('Unable to save preferences to localStorage:', e)
+    } catch {
+      // localStorage unavailable (e.g. private mode) — the consent cookie still persists
+      // the choice, so continue silently.
     }
     applyConsent(preferences)
     setSavedPreferencesBackup(preferences)
@@ -452,9 +462,9 @@ export default function CookieConsent() {
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-2">We Value Your Privacy</h3>
             <p className="text-sm text-gray-600 mb-3">
-              We use cookies to improve your experience on our site and to understand how it is
-              used. By clicking &quot;Accept All&quot;, you consent to our use of cookies for
-              analytics. You can manage your preferences or decline non-essential cookies.
+              We use Google Analytics to understand how this site is used. Analytics runs by
+              default; you can decline it or manage your preferences at any time. Declining stops
+              analytics on this browser and removes those cookies.
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <Link href="/privacy-policy" className="text-blue-600 hover:underline">

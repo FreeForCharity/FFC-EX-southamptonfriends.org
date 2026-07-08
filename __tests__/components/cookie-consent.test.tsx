@@ -21,9 +21,12 @@ function lastAnalyticsStorage(): string | undefined {
 beforeEach(() => {
   window.localStorage.clear()
   window.dataLayer = []
-  // Clear any cookies set by a previous test
+  // Clear any cookies set by a previous test (skip empty names when document.cookie is '')
   document.cookie.split(';').forEach((c) => {
-    document.cookie = `${c.split('=')[0].trim()}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+    const name = c.split('=')[0].trim()
+    if (name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+    }
   })
 })
 
