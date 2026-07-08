@@ -26,8 +26,8 @@ export default function PrivacyPolicy() {
         <p>
           The Southampton Friends Meeting website (southamptonfriends.org) is a static information
           site. We do not run accounts, comments, e-commerce, or newsletters, and we do not
-          knowingly collect personal information from visitors. The one exception is the aggregate,
-          consent-based analytics described below.
+          knowingly collect personal information from visitors. The one exception is the aggregate
+          analytics described below, which you can decline at any time.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
@@ -44,13 +44,12 @@ export default function PrivacyPolicy() {
           Cookies
         </h2>
         <p>
-          Analytics cookies (such as <code>_ga</code>) are set only if you consent through the
-          cookie banner shown on your first visit. If you decline, these analytics cookies are not
-          set, and any that already exist are deleted. To change your choice later, clear this
-          site&apos;s cookies and stored data in your browser and the banner will appear again on
-          your next visit. Aside from analytics, your browser may store a small amount of
-          information used by the site itself (for example, remembering your cookie choice), but
-          that information stays in your browser. For details, see our{' '}
+          To measure visits, Google Analytics 4 sets a first-party analytics cookie (such as{' '}
+          <code>_ga</code>) when you visit. You can decline analytics at any time using the cookie
+          banner: declining stops analytics on this browser and deletes those cookies. Aside from
+          analytics, your browser may store a small amount of information used by the site itself
+          (for example, remembering your cookie choice), but that information stays in your browser.
+          For details, see our{' '}
           <Link href="/cookie-policy" className="text-sky-deep underline">
             Cookie Policy
           </Link>

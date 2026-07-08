@@ -58,10 +58,11 @@ export default function CookiePolicy() {
           Managing your choices
         </h2>
         <p>
-          When you first visit, our cookie-consent banner lets you accept, decline, or customize
-          non-essential cookies. Declining removes analytics cookies such as <code>_ga</code>. To
-          change your choice later, clear this site&apos;s cookies and stored data in your browser
-          settings — the consent banner will appear again on your next visit so you can choose
+          Analytics runs by default so we can measure aggregate usage, but you are always free to
+          opt out. Our cookie-consent banner lets you decline (or customize) non-essential cookies:
+          declining stops analytics on this browser and removes analytics cookies such as{' '}
+          <code>_ga</code>. You can also clear this site&apos;s cookies and stored data in your
+          browser settings, which brings the banner back on your next visit so you can choose
           differently.
         </p>
 

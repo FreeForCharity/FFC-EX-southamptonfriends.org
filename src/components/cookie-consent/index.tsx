@@ -3,22 +3,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 
-// This site loads GA4 through its Google Tag Manager container (see
-// src/lib/analytics.config.ts + src/components/google-tag-manager). This banner does NOT
-// inject its own analytics scripts — doing so would double-count pageviews. Its job is to
-// (a) signal consent to GTM via the dataLayer (Google Consent Mode) and (b) delete analytics
-// cookies when consent is declined or withdrawn.
+// Opt-out analytics model. GA4 loads through this site's Google Tag Manager container
+// (src/lib/analytics.config.ts + src/components/google-tag-manager) and runs by default.
+// This banner does NOT inject its own analytics scripts (that would double-count). Its job
+// is to let a visitor DECLINE: on decline it sends a Google Consent Mode update
+// (analytics_storage: 'denied') — which GA4 honours natively, stopping cookie use going
+// forward — and deletes existing analytics cookies. Accepting re-grants analytics_storage.
 
-// Define type for GTM dataLayer events
-interface DataLayerEvent {
-  event: string
-  [key: string]: string | number | boolean | undefined
-}
-
-// Extend Window interface to include dataLayer and openCookiePreferences
+// The GTM dataLayer holds heterogeneous entries (event objects and gtag command arrays).
 declare global {
   interface Window {
-    dataLayer?: DataLayerEvent[]
+    dataLayer?: unknown[]
     openCookiePreferences?: () => void
   }
 }
@@ -29,15 +24,40 @@ interface CookiePreferences {
   analytics: boolean
 }
 
-// Consent Mode default: until the visitor chooses, tell GTM analytics is denied.
-function pushDefaultDenyConsent() {
+// Send a Google Consent Mode update. Pushing the gtag command array is read by GA4/GTM
+// the same as gtag('consent', 'update', ...). GA4 respects analytics_storage natively, so
+// this genuinely turns GA cookie use on/off for this browser.
+function updateConsentMode(analyticsGranted: boolean) {
   if (typeof window === 'undefined') return
   const dataLayer = (window.dataLayer = window.dataLayer || [])
-  dataLayer.push({
-    event: 'consent_update',
-    functional_consent: 'granted',
-    analytics_consent: 'denied',
+  const gtag = (...args: unknown[]) => dataLayer.push(args)
+  gtag('consent', 'update', {
+    analytics_storage: analyticsGranted ? 'granted' : 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
   })
+}
+
+// Read the saved consent from localStorage, falling back to the `cookie-consent`
+// cookie. The cookie is the durable source of truth when localStorage is cleared
+// independently (or unavailable in private mode), so the banner does not reappear
+// for a visitor who has already chosen.
+function readStoredConsent(): string | null {
+  try {
+    const ls = localStorage.getItem('cookie-consent')
+    if (ls) return ls
+  } catch {
+    // localStorage unavailable — fall through to the cookie
+  }
+  if (typeof document === 'undefined') return null
+  const entry = document.cookie.split('; ').find((c) => c.startsWith('cookie-consent='))
+  if (!entry) return null
+  try {
+    return decodeURIComponent(entry.slice('cookie-consent='.length))
+  } catch {
+    return null
+  }
 }
 
 export default function CookieConsent() {
@@ -90,16 +110,9 @@ export default function CookieConsent() {
         deleteAnalyticsCookies()
       }
 
-      // Signal consent to GTM (Consent Mode). No script injection here: GA4 fires
-      // inside the GTM container; injecting gtag would double-count.
-      if (typeof window !== 'undefined') {
-        const dataLayer = (window.dataLayer = window.dataLayer || [])
-        dataLayer.push({
-          event: 'consent_update',
-          functional_consent: prefs.functional ? 'granted' : 'denied',
-          analytics_consent: prefs.analytics ? 'granted' : 'denied',
-        })
-      }
+      // Tell GA4 (via GTM) whether analytics is allowed. No script injection here — GA4
+      // fires inside the GTM container; injecting gtag would double-count.
+      updateConsentMode(prefs.analytics)
     },
     [deleteAnalyticsCookies]
   )
@@ -108,22 +121,17 @@ export default function CookieConsent() {
   const loadPreferencesFromLocalStorage = useCallback(
     (showBannerIfMissing = true) => {
       try {
-        const consent = localStorage.getItem('cookie-consent')
+        const consent = readStoredConsent()
         if (!consent) {
-          if (showBannerIfMissing) {
-            pushDefaultDenyConsent()
-            setShowBanner(true)
-          }
+          // No stored choice yet: show the banner (analytics runs by default until declined).
+          if (showBannerIfMissing) setShowBanner(true)
           return
         }
         let savedPreferences: CookiePreferences
         try {
           savedPreferences = JSON.parse(consent)
         } catch {
-          if (showBannerIfMissing) {
-            pushDefaultDenyConsent()
-            setShowBanner(true)
-          }
+          if (showBannerIfMissing) setShowBanner(true)
           return
         }
 
@@ -146,18 +154,11 @@ export default function CookieConsent() {
           applyConsent(updatedPreferences)
         } else {
           // Invalid data, show banner again
-          if (showBannerIfMissing) {
-            pushDefaultDenyConsent()
-            setShowBanner(true)
-          }
+          if (showBannerIfMissing) setShowBanner(true)
         }
       } catch {
-        // If localStorage is unavailable (e.g. private mode) still default to deny
-        // before showing the banner, so GTM/GA never runs without an explicit signal.
-        if (showBannerIfMissing) {
-          pushDefaultDenyConsent()
-          setShowBanner(true)
-        }
+        // If localStorage is unavailable (e.g. private mode), just show the banner.
+        if (showBannerIfMissing) setShowBanner(true)
       }
     },
     [applyConsent]
@@ -276,9 +277,7 @@ export default function CookieConsent() {
       console.warn('Unable to save preferences to localStorage:', e)
     }
 
-    // Delete third-party cookies when consent is withdrawn
-    deleteAnalyticsCookies()
-
+    // applyConsent() deletes analytics cookies whenever analytics is not consented.
     applyConsent(onlyNecessary)
     setSavedPreferencesBackup(onlyNecessary)
     setShowBanner(false)
