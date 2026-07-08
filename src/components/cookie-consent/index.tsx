@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 
-// Environment variables for tracking IDs (replace with actual values)
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-XXXXXXXXXX'
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || 'XXXXXXXXXXXXXXX'
-const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 'XXXXXXXXXX'
+// This site loads GA4 through its Google Tag Manager container (see
+// src/lib/analytics.config.ts + src/components/google-tag-manager). This banner does NOT
+// inject its own analytics scripts — doing so would double-count pageviews. Its job is to
+// (a) signal consent to GTM via the dataLayer (Google Consent Mode) and (b) delete analytics
+// cookies when consent is declined or withdrawn.
 
 // Define type for GTM dataLayer events
 interface DataLayerEvent {
@@ -26,7 +27,17 @@ interface CookiePreferences {
   necessary: boolean
   functional: boolean
   analytics: boolean
-  marketing: boolean
+}
+
+// Consent Mode default: until the visitor chooses, tell GTM analytics is denied.
+function pushDefaultDenyConsent() {
+  if (typeof window === 'undefined') return
+  window.dataLayer = window.dataLayer || []
+  window.dataLayer.push({
+    event: 'consent_update',
+    functional_consent: 'granted',
+    analytics_consent: 'denied',
+  })
 }
 
 export default function CookieConsent() {
@@ -36,80 +47,11 @@ export default function CookieConsent() {
     necessary: true, // Always true, cannot be changed
     functional: true, // Always true, cannot be changed (remembers site preferences, e.g. your cookie choices)
     analytics: false,
-    marketing: false,
   })
   const [savedPreferencesBackup, setSavedPreferencesBackup] =
     useState<CookiePreferences>(preferences)
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
-
-  const loadGoogleAnalytics = useCallback(() => {
-    if (
-      typeof window !== 'undefined' &&
-      !document.querySelector('script[src*="googletagmanager.com/gtag"]')
-    ) {
-      const gaScript = document.createElement('script')
-      gaScript.async = true
-      gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
-      document.head.appendChild(gaScript)
-
-      const gaConfigScript = document.createElement('script')
-      const secureFlag =
-        typeof window !== 'undefined' && window.location.protocol === 'https:' ? ';Secure' : ''
-      gaConfigScript.textContent = `
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '${GA_MEASUREMENT_ID}', {
-          'anonymize_ip': true,
-          'cookie_flags': 'SameSite=Lax${secureFlag}'
-        });
-      `
-      document.head.appendChild(gaConfigScript)
-    }
-  }, [])
-
-  const loadMetaPixel = useCallback(() => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="fbevents.js"]')) {
-      const fbScript = document.createElement('script')
-      fbScript.textContent = `
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '${META_PIXEL_ID}');
-        fbq('track', 'PageView');
-      `
-      document.head.appendChild(fbScript)
-
-      const fbNoScript = document.createElement('noscript')
-      const img = document.createElement('img')
-      img.height = 1
-      img.width = 1
-      img.style.display = 'none'
-      img.src = `https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`
-      fbNoScript.appendChild(img)
-      document.body.appendChild(fbNoScript)
-    }
-  }, [])
-
-  const loadMicrosoftClarity = useCallback(() => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="clarity.ms"]')) {
-      const clarityScript = document.createElement('script')
-      clarityScript.textContent = `
-        (function(c,l,a,r,i,t,y){
-          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
-      `
-      document.head.appendChild(clarityScript)
-    }
-  }, [])
 
   const deleteAnalyticsCookies = useCallback(() => {
     // List of static cookie names to delete
@@ -147,10 +89,7 @@ export default function CookieConsent() {
 
       // Check if consent was withdrawn and delete cookies if needed
       if (previousPrefs) {
-        if (
-          (previousPrefs.analytics && !prefs.analytics) ||
-          (previousPrefs.marketing && !prefs.marketing)
-        ) {
+        if (previousPrefs.analytics && !prefs.analytics) {
           deleteAnalyticsCookies()
         }
       }
@@ -162,20 +101,12 @@ export default function CookieConsent() {
           event: 'consent_update',
           functional_consent: prefs.functional ? 'granted' : 'denied',
           analytics_consent: prefs.analytics ? 'granted' : 'denied',
-          marketing_consent: prefs.marketing ? 'granted' : 'denied',
         })
       }
-
-      // Load scripts based on consent independently
-      if (prefs.analytics) {
-        loadGoogleAnalytics()
-        loadMicrosoftClarity()
-      }
-      if (prefs.marketing) {
-        loadMetaPixel()
-      }
+      // No script injection here: GA4 loads inside the GTM container. Consent is
+      // enforced by the dataLayer signal above (Consent Mode) and cookie deletion below.
     },
-    [deleteAnalyticsCookies, loadGoogleAnalytics, loadMetaPixel, loadMicrosoftClarity]
+    [deleteAnalyticsCookies]
   )
 
   // Helper to load preferences from localStorage and update state
@@ -184,14 +115,20 @@ export default function CookieConsent() {
       try {
         const consent = localStorage.getItem('cookie-consent')
         if (!consent) {
-          if (showBannerIfMissing) setShowBanner(true)
+          if (showBannerIfMissing) {
+            pushDefaultDenyConsent()
+            setShowBanner(true)
+          }
           return
         }
         let savedPreferences: CookiePreferences
         try {
           savedPreferences = JSON.parse(consent)
         } catch {
-          if (showBannerIfMissing) setShowBanner(true)
+          if (showBannerIfMissing) {
+            pushDefaultDenyConsent()
+            setShowBanner(true)
+          }
           return
         }
 
@@ -200,8 +137,7 @@ export default function CookieConsent() {
           typeof savedPreferences === 'object' &&
           savedPreferences !== null &&
           typeof savedPreferences.necessary === 'boolean' &&
-          typeof savedPreferences.analytics === 'boolean' &&
-          typeof savedPreferences.marketing === 'boolean'
+          typeof savedPreferences.analytics === 'boolean'
         ) {
           // Ensure functional is always true (for backward compatibility with old saved preferences)
           // Create a new object to avoid mutation
@@ -214,7 +150,10 @@ export default function CookieConsent() {
           applyConsent(updatedPreferences)
         } else {
           // Invalid data, show banner again
-          if (showBannerIfMissing) setShowBanner(true)
+          if (showBannerIfMissing) {
+            pushDefaultDenyConsent()
+            setShowBanner(true)
+          }
         }
       } catch {
         // If localStorage is unavailable or data is corrupted, show banner
@@ -286,7 +225,6 @@ export default function CookieConsent() {
       necessary: true,
       functional: true,
       analytics: true,
-      marketing: true,
     }
     setPreferences(allAccepted)
     try {
@@ -305,7 +243,6 @@ export default function CookieConsent() {
       necessary: true,
       functional: true, // Always on: core functional cookies (remembers site preferences)
       analytics: false,
-      marketing: false,
     }
     setPreferences(onlyNecessary)
     try {
@@ -412,10 +349,6 @@ export default function CookieConsent() {
                 These cookies remember your preferences — such as your cookie choices — and enable
                 core site functionality. They do not track you across other sites.
               </p>
-              <p className="text-xs text-gray-500">
-                Note: donations are processed off-site by Square on its own domain, subject to
-                Square&apos;s own cookie practices.
-              </p>
             </div>
 
             {/* Analytics Cookies */}
@@ -437,34 +370,9 @@ export default function CookieConsent() {
               </div>
               <p className="text-sm text-gray-600 mb-2">
                 These cookies help us understand how visitors interact with our website by
-                collecting and reporting information anonymously. We use Google Analytics and
-                Microsoft Clarity.
+                collecting and reporting information anonymously. We use Google Analytics.
               </p>
-              <p className="text-xs text-gray-500">Services: Google Analytics, Microsoft Clarity</p>
-            </div>
-
-            {/* Marketing Cookies */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-900">Marketing Cookies</h3>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={preferences.marketing}
-                    onChange={(e) =>
-                      setPreferences({ ...preferences, marketing: e.target.checked })
-                    }
-                    className="sr-only peer"
-                    aria-label="Enable marketing cookies"
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                These cookies are used to track visitors across websites. The intention is to
-                display ads that are relevant and engaging for the individual user.
-              </p>
-              <p className="text-xs text-gray-500">Services: Meta Pixel (Facebook)</p>
+              <p className="text-xs text-gray-500">Services: Google Analytics</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-6">
@@ -498,10 +406,9 @@ export default function CookieConsent() {
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-2">We Value Your Privacy</h3>
             <p className="text-sm text-gray-600 mb-3">
-              We use cookies to improve your experience on our site, analyze traffic, and enable
-              certain features. By clicking &quot;Accept All&quot;, you consent to our use of
-              cookies for analytics and marketing purposes. You can manage your preferences or
-              decline non-essential cookies.
+              We use cookies to improve your experience on our site and to understand how it is
+              used. By clicking &quot;Accept All&quot;, you consent to our use of cookies for
+              analytics. You can manage your preferences or decline non-essential cookies.
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <Link href="/privacy-policy" className="text-blue-600 hover:underline">

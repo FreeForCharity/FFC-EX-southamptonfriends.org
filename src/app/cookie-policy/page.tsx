@@ -59,9 +59,10 @@ export default function CookiePolicy() {
         </h2>
         <p>
           When you first visit, our cookie-consent banner lets you accept, decline, or customize
-          non-essential cookies. Declining removes analytics cookies such as <code>_ga</code>. You
-          can change your choice at any time by reopening the cookie preferences from the banner, or
-          by clearing site data through your browser settings.
+          non-essential cookies. Declining removes analytics cookies such as <code>_ga</code>. To
+          change your choice later, clear this site&apos;s cookies and stored data in your browser
+          settings — the consent banner will appear again on your next visit so you can choose
+          differently.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">

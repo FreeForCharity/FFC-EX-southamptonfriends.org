@@ -46,10 +46,11 @@ export default function PrivacyPolicy() {
         <p>
           Analytics cookies (such as <code>_ga</code>) are set only if you consent through the
           cookie banner shown on your first visit. If you decline, these analytics cookies are not
-          set, and any that already exist are deleted. You can decline or change your preferences at
-          any time by reopening the cookie banner. Aside from analytics, your browser may store a
-          small amount of information used by the site itself (for example, remembering your cookie
-          choice), but that information stays in your browser. For details, see our{' '}
+          set, and any that already exist are deleted. To change your choice later, clear this
+          site&apos;s cookies and stored data in your browser and the banner will appear again on
+          your next visit. Aside from analytics, your browser may store a small amount of
+          information used by the site itself (for example, remembering your cookie choice), but
+          that information stays in your browser. For details, see our{' '}
           <Link href="/cookie-policy" className="text-sky-deep underline">
             Cookie Policy
           </Link>
