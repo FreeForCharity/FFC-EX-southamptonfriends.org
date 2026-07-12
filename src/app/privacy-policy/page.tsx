@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -24,8 +25,36 @@ export default function PrivacyPolicy() {
         </h2>
         <p>
           The Southampton Friends Meeting website (southamptonfriends.org) is a static information
-          site. We do not run accounts, comments, e-commerce, newsletters, or tracking analytics on
-          this site. We do not knowingly collect personal information from visitors.
+          site. We do not run accounts, comments, e-commerce, or newsletters, and we do not
+          knowingly collect personal information from visitors. The one exception is the aggregate
+          analytics described below, which you can decline.
+        </p>
+
+        <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
+          Analytics
+        </h2>
+        <p>
+          To understand how this site is used in aggregate — for example, which pages are visited
+          most often — we use Google Tag Manager and Google Analytics 4. This helps us maintain and
+          improve the site. We do not use this information to identify individual visitors, and we
+          do not sell it.
+        </p>
+
+        <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
+          Cookies
+        </h2>
+        <p>
+          To measure visits, Google Analytics 4 sets a first-party analytics cookie (such as{' '}
+          <code>_ga</code>) when you visit. You can decline analytics using the cookie banner shown
+          on your first visit: declining stops analytics on this browser and deletes those cookies.
+          To change your choice later, clear this site&apos;s cookies and stored data and the banner
+          will return on your next visit. Aside from analytics, your browser may store a small
+          amount of information used by the site itself (for example, remembering your cookie
+          choice), but that information stays in your browser. For details, see our{' '}
+          <Link href="/cookie-policy" className="text-sky-deep underline">
+            Cookie Policy
+          </Link>
+          .
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
@@ -36,15 +65,6 @@ export default function PrivacyPolicy() {
           that provides free hosting for nonprofit organizations. The hosting provider may keep
           standard server logs (IP address, browser, time of request) for the purpose of security
           and abuse prevention. The meeting does not access or retain those logs.
-        </p>
-
-        <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
-          Cookies
-        </h2>
-        <p>
-          This site does not set tracking cookies. Your browser may store a small amount of
-          information used by the site itself (for example, remembering whether you have closed a
-          menu), but none of it leaves your browser.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
