@@ -5,6 +5,11 @@ on:
     workflows: ['Deploy to GitHub Pages']
     types: [completed]
     branches: [main]
+  # Daily uptime pass: same deep checks between deploys, so platform-level
+  # regressions (DNS, certs, CDN, zone security) surface within a day
+  # instead of on the next deploy. Supersedes the separate uptime.yml.
+  schedule:
+    - cron: '17 5 * * *'
   workflow_dispatch:
     inputs:
       url:
@@ -19,7 +24,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -28,14 +33,19 @@ jobs:
         id: url
         run: |
           set -euo pipefail
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           if [ -n "${{ inputs.url }}" ]; then
             target="${{ inputs.url }}"
           elif [ -f public/CNAME ]; then
             cname=$(tr -d '[:space:]' < public/CNAME)
             target="https://${cname}/"
           else
-            echo "::error::No URL input and no public/CNAME — cannot determine smoke URL"
-            exit 1
+            # No custom domain -> site is not cut over yet. A red run (and a
+            # high-priority issue) for a not-yet-live site is noise, so skip
+            # neutrally. Explicit dispatch with a url input still tests.
+            echo "::notice::No URL input and no public/CNAME — site not cut over; skipping smoke neutrally"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           # Force https://
           target="${target/http:\/\//https://}"
@@ -47,6 +57,7 @@ jobs:
 
       - name: Probe live URL over HTTPS (cert-aware retry)
         id: probe
+        if: steps.url.outputs.skip != 'true'
         env:
           URL: ${{ steps.url.outputs.url }}
         run: |
@@ -88,6 +99,7 @@ jobs:
           echo "Body length: $(wc -c < /tmp/page.html) bytes"
 
       - name: Assert no FFC-template-default content
+        if: steps.url.outputs.skip != 'true'
         env:
           # Block the FFC charity-mission template's distinctive title.
           # This is the exact regression the user flagged: staging.<domain> was
@@ -111,6 +123,7 @@ jobs:
           echo "✓ Template-default content NOT present"
 
       - name: Assert per-repo expected title (if configured)
+        if: steps.url.outputs.skip != 'true'
         env:
           EXPECTED_TITLE_FRAGMENT: ${{ vars.SMOKE_EXPECTED_TITLE }}
         run: |
@@ -127,6 +140,7 @@ jobs:
           echo "✓ Title contains expected fragment: $EXPECTED_TITLE_FRAGMENT"
 
       - name: Sitemap routes 200-check (every URL in sitemap.xml must HTTPS-resolve)
+        if: steps.url.outputs.skip != 'true'
         env:
           URL: ${{ steps.url.outputs.url }}
         run: |
@@ -166,11 +180,13 @@ jobs:
           if [ "$fail" -gt 0 ]; then exit 1; fi
 
       - name: Setup Node for visual check
+        if: steps.url.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install Playwright (chromium only)
+        if: steps.url.outputs.skip != 'true'
         run: |
           # Install the npm package in an isolated dir so we don'\''t touch
           # the repo'\''s own package.json (the FFC-EX repos use Next.js,
@@ -184,6 +200,7 @@ jobs:
 
       - name: Visual check + screenshot + compliance assertions
         id: visual
+        if: steps.url.outputs.skip != 'true'
         env:
           URL: ${{ steps.url.outputs.url }}
           # Repo variables (Settings -> Secrets and variables -> Actions -> Variables).
@@ -339,8 +356,32 @@ jobs:
           # upload-artifact looks for them.
           GITHUB_WORKSPACE="$GITHUB_WORKSPACE" node /tmp/pw/visual.js
 
+      - name: Run repo-local smoke specs (if present)
+        # Depth hook: a repo can ship its own Playwright smoke suite in
+        # tests/smoke/ (optionally with playwright.smoke.config.ts reading
+        # SMOKE_BASE_URL) and the engine runs it against the live URL.
+        # Adopted from the FFC-EX-mitchellnchistory.org pattern.
+        if: steps.url.outputs.skip != 'true'
+        env:
+          SMOKE_BASE_URL: ${{ steps.url.outputs.url }}
+          SMOKE_URL: ${{ steps.url.outputs.url }}
+          PLAYWRIGHT_BASE_URL: ${{ steps.url.outputs.url }}
+        run: |
+          set -euo pipefail
+          if ! ls tests/smoke/*.spec.* >/dev/null 2>&1; then
+            echo "::notice::No tests/smoke/*.spec.* in repo — skipping repo-local smoke specs"
+            exit 0
+          fi
+          npm ci
+          npx playwright install --with-deps chromium
+          if [ -f playwright.smoke.config.ts ]; then
+            npx playwright test --config playwright.smoke.config.ts --reporter=list
+          else
+            npx playwright test tests/smoke --reporter=list
+          fi
+
       - name: Upload screenshot + summary artifact
-        if: always()
+        if: always() && steps.url.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: smoke-visual-${{ github.run_number }}
@@ -359,6 +400,7 @@ jobs:
             echo ""
             echo "- **URL:** $URL"
             echo "- **HTTPS status:** ${STATUS:-n/a} (probed in ${ATTEMPTS:-n/a} attempt(s))"
+            echo "- **Trigger:** ${{ github.event_name }} (schedule = daily uptime pass)"
             echo "- **Job result:** ${{ job.status }}"
             echo "- **Screenshots:** see \`smoke-visual-${{ github.run_number }}\` artifact"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -366,7 +408,7 @@ jobs:
       - name: Upsert / auto-close high-priority smoke-failure issue
         # Failure -> ensure ONE open issue labeled smoke-failure + "priority: high"
         # (daily triage keys on these labels org-wide). Success -> auto-close it.
-        if: always() && !cancelled()
+        if: always() && !cancelled() && steps.url.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RESULT: ${{ job.status }}
@@ -380,7 +422,7 @@ jobs:
           if [ "$RESULT" = "success" ]; then
             if [ -n "$existing" ]; then
               gh api "repos/${REPO}/issues/${existing}/comments" --method POST \
-                -f body="✅ Smoke recovered in run [${GITHUB_RUN_NUMBER}](${RUN_URL}). Auto-closing." >/dev/null
+                -f body="✅ Smoke recovered in run [${GITHUB_RUN_NUMBER}](${RUN_URL}) (${GITHUB_EVENT_NAME}). Auto-closing." >/dev/null
               gh api -X PATCH "repos/${REPO}/issues/${existing}" -f state=closed >/dev/null
               echo "Closed recovered smoke-failure issue #${existing}"
             else
@@ -397,18 +439,20 @@ jobs:
 
           if [ -n "$existing" ]; then
             gh api "repos/${REPO}/issues/${existing}/comments" --method POST \
-              -f body="🔴 Still failing: run [${GITHUB_RUN_NUMBER}](${RUN_URL})" >/dev/null
+              -f body="🔴 Still failing: run [${GITHUB_RUN_NUMBER}](${RUN_URL}) (${GITHUB_EVENT_NAME})" >/dev/null
             echo "Commented on existing smoke-failure issue #${existing}"
           else
+            body=$(printf '%s\n' \
+              "The Post-Deploy Smoke Test is failing on this repo." \
+              "" \
+              "- **Failing run:** ${RUN_URL} (trigger: ${GITHUB_EVENT_NAME}; schedule = daily uptime pass)" \
+              "- **Target:** ${URL:-could not be determined (no public/CNAME?)}" \
+              "- **Triage:** check the failed step in the run. Screenshot/summary artifact: smoke-visual-${GITHUB_RUN_NUMBER} on the run." \
+              "" \
+              "This issue is auto-managed: subsequent failing runs comment here instead of opening duplicates, and the first green run auto-closes it.")
             gh api "repos/${REPO}/issues" --method POST \
               -f title="Post-deploy smoke FAILING: ${URL:-site URL undetermined}" \
-              -f body="The Post-Deploy Smoke Test is failing on this repo.
-
-- **Failing run:** ${RUN_URL}
-- **Target:** ${URL:-could not be determined (no public/CNAME?)}
-- **Triage:** check the failed step in the run, then see the \`ffc-smoke\` triage table (failed step → likely cause). Screenshot/summary artifact: \`smoke-visual-${GITHUB_RUN_NUMBER}\` on the run.
-
-This issue is auto-managed: subsequent failing runs comment here instead of opening duplicates, and the first green run auto-closes it." \
+              -f body="$body" \
               -f "labels[]=smoke-failure" -f "labels[]=priority: high" >/dev/null
             echo "Opened new smoke-failure issue"
           fi
