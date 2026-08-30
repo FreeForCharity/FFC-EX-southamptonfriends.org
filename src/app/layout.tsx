@@ -3,6 +3,7 @@ import './globals.css'
 import Header from '@/components/header'
 import Footer from '@/components/footer'
 import GoogleTagManager, { GoogleTagManagerNoScript } from '@/components/google-tag-manager'
+import { CONSENT_MODE_BOOTSTRAP } from '@/lib/consent-mode'
 import { faustina, lato, cantataOne } from '@/lib/fonts'
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
@@ -74,6 +75,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google Consent Mode v2 defaults — MUST run before any Google tag
+            (i.e. before the GoogleTagManager component below) so the
+            region-scoped defaults are already on the dataLayer when GTM/GA4
+            initialise.
+            Granted worldwide, denied (cookieless pings) only where Google's
+            EU User Consent Policy requires opt-in. See src/lib/consent-mode.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_MODE_BOOTSTRAP }} />
         <GoogleTagManager />
       </head>
       <body
