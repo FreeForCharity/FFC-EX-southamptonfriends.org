@@ -51,18 +51,18 @@ export default function PrivacyPolicy() {
           visit is counted only in an aggregate way, without analytics cookies or identifiers that
           could tie it back to you, and because this site offers no way to opt in to analytics
           cookies, visitors from those regions always remain in that state. (Switzerland is included
-          because Google&apos;s consent defaults cover it; Swiss visitors&apos; data is protected by
-          Switzerland&apos;s Federal Act on Data Protection (FADP) rather than the GDPR.) As with
-          any web request, network-level data such as your IP address still reaches the servers
-          involved, and this consent behavior depends on JavaScript being enabled in your browser.
-          Everywhere else, including the United States, Google Analytics cookies are set from your
-          first pageview; this site does not yet provide an on-page control to change that, but you
-          can block or delete these cookies through your browser settings or with Google&apos;s own
-          analytics opt-out browser add-on. Which rule applies to your visit is determined by Google
-          from your IP address at the time of your visit; IP geolocation is approximate. We do not
-          use session recording tools or advertising pixels. Your browser may also store a small
-          amount of information used by the site itself (for example, remembering whether you have
-          closed a menu), which never leaves your browser.
+          because Google&apos;s consent defaults cover it; the data of visitors in Switzerland is
+          protected by Switzerland&apos;s Federal Act on Data Protection (FADP) rather than the
+          GDPR.) As with any web request, network-level data such as your IP address still reaches
+          the servers involved, and this consent behavior depends on JavaScript being enabled in
+          your browser. Everywhere else, including the United States, Google Analytics cookies are
+          set from your first pageview; this site does not yet provide an on-page control to change
+          that, but you can block or delete these cookies through your browser settings or with
+          Google&apos;s own analytics opt-out browser add-on. Which rule applies to your visit is
+          determined by Google from your IP address at the time of your visit; IP geolocation is
+          approximate. We do not use session recording tools or advertising pixels. Your browser may
+          also store a small amount of information used by the site itself (for example, remembering
+          whether you have closed a menu), which never leaves your browser.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
