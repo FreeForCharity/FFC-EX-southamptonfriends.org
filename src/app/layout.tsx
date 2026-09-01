@@ -3,6 +3,7 @@ import './globals.css'
 import Header from '@/components/header'
 import Footer from '@/components/footer'
 import GoogleTagManager, { GoogleTagManagerNoScript } from '@/components/google-tag-manager'
+import CookieConsent from '@/components/cookie-consent'
 import { faustina, lato, cantataOne } from '@/lib/fonts'
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
@@ -97,6 +98,7 @@ export default function RootLayout({
         <Header />
         <main id="main">{children}</main>
         <Footer />
+        <CookieConsent />
       </body>
     </html>
   )
