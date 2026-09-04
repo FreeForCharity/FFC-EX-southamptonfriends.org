@@ -1,8 +1,16 @@
 // Google Consent Mode v2 defaults.
 //
-// Policy: analytics and advertising storage is DENIED by default for every
-// visitor, worldwide, until they opt in. There is no regional carve-out and
-// no permissive default.
+// Policy: every storage type that carries measurement or personalisation is
+// DENIED by default for every visitor, worldwide, until they opt in. There is
+// no regional carve-out and no permissive default.
+//
+// Precisely: analytics_storage, ad_storage, ad_user_data, ad_personalization
+// and personalization_storage all start denied. security_storage is granted
+// and stays granted. functionality_storage is granted BY DEFAULT — a site that
+// cannot remember a consent choice cannot honour one — and thereafter follows
+// the visitor's own functional toggle through updateGoogleConsent, so it is
+// not something that "stays" granted. Saying "analytics and advertising"
+// here under-claimed by omitting personalization_storage.
 //
 // This file used to say "the most permissive configuration Google's own
 // rules allow", and implemented it: a region-scoped denial for the EEA, the
@@ -13,9 +21,6 @@
 // protection than its European ones -- and it is the charity, not the
 // template, that is the controller for this site.
 //
-// "Analytics and advertising" is the scope, not a hedge. functionality_storage
-// and security_storage stay GRANTED below: neither carries measurement, and a
-// site that cannot remember a consent choice cannot honour one.
 //
 // WHAT THIS MEANS ON THIS SITE SPECIFICALLY. There is no cookie banner
 // mounted here, so nothing can ever push a `consent update`. Analytics does
