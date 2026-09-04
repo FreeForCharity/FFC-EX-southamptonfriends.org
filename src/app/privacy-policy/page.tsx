@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
           Privacy Policy
         </h1>
         <p className="mt-3 text-stone font-(family-name:--font-lato) text-[0.9rem]">
-          Effective date: January 2026
+          Effective date: August 30, 2026
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-10 mb-3">
@@ -24,8 +24,9 @@ export default function PrivacyPolicy() {
         </h2>
         <p>
           The Southampton Friends Meeting website (southamptonfriends.org) is a static information
-          site. We do not run accounts, comments, e-commerce, newsletters, or tracking analytics on
-          this site. We do not knowingly collect personal information from visitors.
+          site. We do not run accounts, comments, e-commerce, or newsletters on this site. We do not
+          knowingly collect personal information from visitors. The site does use aggregate web
+          analytics, described in the Cookies and analytics section below.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
@@ -39,12 +40,59 @@ export default function PrivacyPolicy() {
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
-          Cookies
+          Cookies and analytics
         </h2>
         <p>
-          This site does not set tracking cookies. Your browser may store a small amount of
-          information used by the site itself (for example, remembering whether you have closed a
-          menu), but none of it leaves your browser.
+          This site uses Google Tag Manager and Google Analytics 4 to understand, in aggregate, how
+          the site is used. These tools run under Google Consent Mode v2, and one rule applies to
+          every visitor: wherever in the world you are, Google&apos;s tags set no analytics or
+          advertising cookies and read no identifiers from your device (storage strictly necessary
+          for security or basic site function may still be used). Your visit is counted only in an
+          aggregate way, without analytics cookies or identifiers that could tie it back to you.
+          There is no country in which analytics cookies are set before you agree. Because this site
+          offers no way to opt in to analytics cookies, every visitor stays free of analytics and
+          advertising cookies permanently — not just until a choice is made (storage strictly
+          necessary for security or basic site function, as noted above, is unaffected); if a
+          consent banner is added later, this page will be updated to say so. You can also block or
+          delete cookies through your browser settings or with Google&apos;s own analytics opt-out
+          browser add-on. Nothing here depends on where you are, so nothing depends on Google
+          guessing your location; visitors in Switzerland are protected by Switzerland&apos;s
+          Federal Act on Data Protection (FADP) rather than the GDPR, and the treatment described
+          above is the same either way. As with any web request, network-level data such as your IP
+          address still reaches the servers involved, and this consent behavior depends on
+          JavaScript being enabled in your browser. We do not use session recording tools or
+          advertising pixels. Your browser may also store a small amount of information used by the
+          site itself (for example, remembering whether you have closed a menu), which never leaves
+          your browser.
+        </p>
+
+        <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
+          Your rights in the EU, UK, and EEA (GDPR)
+        </h2>
+        <p>
+          If the EU General Data Protection Regulation (GDPR) or the UK GDPR applies to your visit,
+          you have the right to: access the personal data we hold about you; have inaccurate data
+          rectified; have your data erased; restrict or object to processing; receive your data in a
+          portable format; and withdraw any consent you have given at any time. Because
+          Google&apos;s tags run without analytics cookies or identifiers for visitors in these
+          regions, we hold no analytics identifiers about you. You may also lodge a complaint with
+          your national data protection supervisory authority (in the UK, the Information
+          Commissioner&apos;s Office). To exercise any of these rights, contact the meeting using
+          the details below.
+        </p>
+
+        <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
+          Your California privacy rights (CCPA/CPRA)
+        </h2>
+        <p>
+          We do not sell personal information, and we do not share it for cross-context behavioral
+          advertising, as those terms are defined by California law &mdash; and have not done so in
+          the preceding 12 months. We do not knowingly collect or sell the personal information of
+          anyone under 16. California residents have the right to know, access, correct, and delete
+          personal information we hold, and not to be discriminated against for exercising these
+          rights; submit a request using the contact details below. This site does not read or
+          respond to the Global Privacy Control or Do Not Track browser signals; because we do not
+          sell or share personal information, there is nothing for those signals to opt out of.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">
