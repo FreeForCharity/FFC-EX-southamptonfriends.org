@@ -50,18 +50,20 @@ export default function PrivacyPolicy() {
           for security or basic site function may still be used). Your visit is counted only in an
           aggregate way, without analytics cookies or identifiers that could tie it back to you.
           There is no country in which analytics cookies are set before you agree. Because this site
-          offers no way to opt in to analytics cookies, every visitor stays in that cookie-free
-          state permanently — not just until a choice is made; if a consent banner is added later,
-          this page will be updated to say so. You can also block or delete cookies through your
-          browser settings or with Google&apos;s own analytics opt-out browser add-on. Nothing here
-          depends on where you are, so nothing depends on Google guessing your location; visitors in
-          Switzerland are protected by Switzerland&apos;s Federal Act on Data Protection (FADP)
-          rather than the GDPR, and the treatment described above is the same either way. As with
-          any web request, network-level data such as your IP address still reaches the servers
-          involved, and this consent behavior depends on JavaScript being enabled in your browser.
-          We do not use session recording tools or advertising pixels. Your browser may also store a
-          small amount of information used by the site itself (for example, remembering whether you
-          have closed a menu), which never leaves your browser.
+          offers no way to opt in to analytics cookies, every visitor stays free of analytics and
+          advertising cookies permanently — not just until a choice is made (storage strictly
+          necessary for security or basic site function, as noted above, is unaffected); if a
+          consent banner is added later, this page will be updated to say so. You can also block or
+          delete cookies through your browser settings or with Google&apos;s own analytics opt-out
+          browser add-on. Nothing here depends on where you are, so nothing depends on Google
+          guessing your location; visitors in Switzerland are protected by Switzerland&apos;s
+          Federal Act on Data Protection (FADP) rather than the GDPR, and the treatment described
+          above is the same either way. As with any web request, network-level data such as your IP
+          address still reaches the servers involved, and this consent behavior depends on
+          JavaScript being enabled in your browser. We do not use session recording tools or
+          advertising pixels. Your browser may also store a small amount of information used by the
+          site itself (for example, remembering whether you have closed a menu), which never leaves
+          your browser.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">

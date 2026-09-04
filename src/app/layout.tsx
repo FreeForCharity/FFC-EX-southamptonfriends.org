@@ -76,11 +76,15 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* Google Consent Mode v2 defaults — MUST run before any Google tag
-            (i.e. before the GoogleTagManager component below) so the
-            region-scoped defaults are already on the dataLayer when GTM/GA4
-            initialise.
-            Granted worldwide, denied (cookieless pings) only where Google's
-            EU User Consent Policy requires opt-in. See src/lib/consent-mode.ts. */}
+            (i.e. before the GoogleTagManager component below) so the defaults
+            are already on the dataLayer when GTM/GA4 initialise.
+            ONE unscoped default, denying analytics and advertising storage for
+            every visitor worldwide until they opt in. This used to read
+            "Granted worldwide, denied only where Google's EU User Consent
+            Policy requires opt-in" — the exact inverse of what now ships, and
+            the kind of comment a later edit reinstates the permissive default
+            from. This site mounts no banner, so nothing lifts the denial and
+            analytics stays cookieless. See src/lib/consent-mode.ts. */}
         <script dangerouslySetInnerHTML={{ __html: CONSENT_MODE_BOOTSTRAP }} />
         <GoogleTagManager />
       </head>
