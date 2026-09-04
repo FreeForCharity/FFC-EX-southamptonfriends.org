@@ -44,25 +44,24 @@ export default function PrivacyPolicy() {
         </h2>
         <p>
           This site uses Google Tag Manager and Google Analytics 4 to understand, in aggregate, how
-          the site is used. These tools run under Google Consent Mode v2 with regional defaults. If
-          you visit from the European Economic Area, the United Kingdom, or Switzerland,
-          Google&apos;s tags set no analytics or advertising cookies and read no such identifiers
-          (storage strictly necessary for security or basic site function may still be used): your
-          visit is counted only in an aggregate way, without analytics cookies or identifiers that
-          could tie it back to you, and because this site offers no way to opt in to analytics
-          cookies, visitors from those regions always remain in that state. (Switzerland is included
-          because Google&apos;s consent defaults cover it; the data of visitors in Switzerland is
-          protected by Switzerland&apos;s Federal Act on Data Protection (FADP) rather than the
-          GDPR.) As with any web request, network-level data such as your IP address still reaches
-          the servers involved, and this consent behavior depends on JavaScript being enabled in
-          your browser. Everywhere else, including the United States, Google Analytics cookies are
-          set from your first pageview; this site does not yet provide an on-page control to change
-          that, but you can block or delete these cookies through your browser settings or with
-          Google&apos;s own analytics opt-out browser add-on. Which rule applies to your visit is
-          determined by Google from your IP address at the time of your visit; IP geolocation is
-          approximate. We do not use session recording tools or advertising pixels. Your browser may
-          also store a small amount of information used by the site itself (for example, remembering
-          whether you have closed a menu), which never leaves your browser.
+          the site is used. These tools run under Google Consent Mode v2, and one rule applies to
+          every visitor: wherever in the world you are, Google&apos;s tags set no analytics or
+          advertising cookies and read no identifiers from your device (storage strictly necessary
+          for security or basic site function may still be used). Your visit is counted only in an
+          aggregate way, without analytics cookies or identifiers that could tie it back to you.
+          There is no country in which analytics cookies are set before you agree. Because this site
+          offers no way to opt in to analytics cookies, every visitor stays in that cookie-free
+          state permanently — not just until a choice is made; if a consent banner is added later,
+          this page will be updated to say so. You can also block or delete cookies through your
+          browser settings or with Google&apos;s own analytics opt-out browser add-on. Nothing here
+          depends on where you are, so nothing depends on Google guessing your location; visitors in
+          Switzerland are protected by Switzerland&apos;s Federal Act on Data Protection (FADP)
+          rather than the GDPR, and the treatment described above is the same either way. As with
+          any web request, network-level data such as your IP address still reaches the servers
+          involved, and this consent behavior depends on JavaScript being enabled in your browser.
+          We do not use session recording tools or advertising pixels. Your browser may also store a
+          small amount of information used by the site itself (for example, remembering whether you
+          have closed a menu), which never leaves your browser.
         </p>
 
         <h2 className="font-(family-name:--font-cantata-one) text-ink text-[1.4rem] mt-8 mb-3">

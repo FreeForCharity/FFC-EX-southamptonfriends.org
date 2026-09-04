@@ -1,90 +1,50 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  EU_CONSENT_REGIONS,
   CONSENT_WAIT_FOR_UPDATE_MS,
   CONSENT_MODE_BOOTSTRAP,
   updateGoogleConsent,
   type ConsentPreferences,
 } from '../../src/lib/consent-mode'
 
-describe('EU_CONSENT_REGIONS', () => {
-  it('contains exactly the 32 codes Google’s EU User Consent Policy covers', () => {
-    // 27 EU member states + 3 non-EU EEA states + UK + Switzerland
-    expect(EU_CONSENT_REGIONS).toHaveLength(32)
-    const expected = [
-      // EU 27
-      'AT',
-      'BE',
-      'BG',
-      'HR',
-      'CY',
-      'CZ',
-      'DK',
-      'EE',
-      'FI',
-      'FR',
-      'DE',
-      'GR',
-      'HU',
-      'IE',
-      'IT',
-      'LV',
-      'LT',
-      'LU',
-      'MT',
-      'NL',
-      'PL',
-      'PT',
-      'RO',
-      'SK',
-      'SI',
-      'ES',
-      'SE',
-      // Non-EU EEA
-      'IS',
-      'LI',
-      'NO',
-      // UK + Switzerland
-      'GB',
-      'CH',
-    ]
-    expect([...EU_CONSENT_REGIONS].sort()).toEqual([...expected].sort())
-    // No duplicates
-    expect(new Set(EU_CONSENT_REGIONS).size).toBe(32)
-  })
-})
-
 describe('CONSENT_MODE_BOOTSTRAP', () => {
-  it('emits the region-scoped denial BEFORE the unscoped grant', () => {
-    const denialIdx = CONSENT_MODE_BOOTSTRAP.indexOf("'analytics_storage': 'denied'")
-    const grantIdx = CONSENT_MODE_BOOTSTRAP.indexOf("'analytics_storage': 'granted'")
-    expect(denialIdx).toBeGreaterThan(-1)
-    expect(grantIdx).toBeGreaterThan(-1)
-    expect(denialIdx).toBeLessThan(grantIdx)
+  it('emits exactly ONE consent default call, and it denies', () => {
+    const calls = CONSENT_MODE_BOOTSTRAP.match(/gtag\('consent', 'default'/g) ?? []
+    expect(calls).toHaveLength(1)
+    expect(CONSENT_MODE_BOOTSTRAP).toContain("'analytics_storage': 'denied'")
   })
 
-  it('scopes the denial to the full region array with wait_for_update', () => {
-    expect(CONSENT_MODE_BOOTSTRAP).toContain(`'region': ${JSON.stringify([...EU_CONSENT_REGIONS])}`)
+  it('grants no storage category that carries measurement', () => {
+    // Asserted by ABSENCE. Reinstating a permissive default is a one-line
+    // edit, and every presence-only assertion above would still pass with
+    // an unscoped grant sitting underneath the denial -- which is exactly
+    // the shape this file used to ship.
+    for (const signal of [
+      'ad_storage',
+      'ad_user_data',
+      'ad_personalization',
+      'analytics_storage',
+      'personalization_storage',
+    ]) {
+      expect(CONSENT_MODE_BOOTSTRAP).toContain(`'${signal}': 'denied'`)
+      expect(CONSENT_MODE_BOOTSTRAP).not.toContain(`'${signal}': 'granted'`)
+    }
+  })
+
+  it('carries no region scoping at all', () => {
+    expect(CONSENT_MODE_BOOTSTRAP).not.toContain("'region'")
+  })
+
+  it('keeps functionality_storage and security_storage granted', () => {
+    // Neither carries measurement, and a site that cannot remember a
+    // consent choice cannot honour one.
+    expect(CONSENT_MODE_BOOTSTRAP).toContain("'functionality_storage': 'granted'")
+    expect(CONSENT_MODE_BOOTSTRAP).toContain("'security_storage': 'granted'")
+  })
+
+  it('still sets wait_for_update on the single call', () => {
     expect(CONSENT_MODE_BOOTSTRAP).toContain(`'wait_for_update': ${CONSENT_WAIT_FOR_UPDATE_MS}`)
     expect(CONSENT_WAIT_FOR_UPDATE_MS).toBe(500)
-  })
-
-  it('sets wait_for_update on BOTH default calls (unscoped grant included)', () => {
-    // Matches the canary reference: GTM loads from the layout here, so the
-    // unscoped grant also carries a wait window. This site has no banner
-    // yet, but keeping both waits means adding one later needs no
-    // bootstrap change.
-    const waitRe = new RegExp(`'wait_for_update': ${CONSENT_WAIT_FOR_UPDATE_MS}`, 'g')
-    const occurrences = CONSENT_MODE_BOOTSTRAP.match(waitRe) ?? []
-    expect(occurrences).toHaveLength(2)
-    // And both sit inside `consent default` calls, after each opening.
-    const defaultCalls = CONSENT_MODE_BOOTSTRAP.split("gtag('consent', 'default'").slice(1)
-    expect(defaultCalls).toHaveLength(2)
-    for (const call of defaultCalls) {
-      const body = call.split('});')[0]
-      expect(body).toContain(`'wait_for_update': ${CONSENT_WAIT_FOR_UPDATE_MS}`)
-    }
   })
 
   it('enables url_passthrough and ads_data_redaction', () => {
@@ -101,7 +61,7 @@ describe('CONSENT_MODE_BOOTSTRAP', () => {
 describe('root layout consent bootstrap ordering', () => {
   // The layout is a server component excluded from jest rendering (font
   // imports), so assert on its source: the consent-mode bootstrap <script>
-  // must be emitted in <head> BEFORE <GoogleTagManager />, or the regional
+  // must be emitted in <head> BEFORE <GoogleTagManager />, or the
   // defaults would arrive after the Google tags initialise.
   const layoutSource = readFileSync(join(process.cwd(), 'src/app/layout.tsx'), 'utf8')
 

@@ -1,81 +1,34 @@
 // Google Consent Mode v2 defaults.
 //
-// Policy: the most permissive configuration Google's own rules allow.
+// Policy: analytics and advertising storage is DENIED by default for every
+// visitor, worldwide, until they opt in. There is no regional carve-out and
+// no permissive default.
 //
-// Google's EU User Consent Policy binds us as a Google Analytics / Ads
-// customer, and it requires opt-IN consent before setting cookies or
-// reading identifiers for visitors in the EEA, the UK, and Switzerland.
-// Everywhere else, no such Google-imposed requirement exists, so storage
-// defaults to GRANTED and measurement is complete from the first pageview.
+// This file used to say "the most permissive configuration Google's own
+// rules allow", and implemented it: a region-scoped denial for the EEA, the
+// UK and Switzerland, followed by an unscoped GRANT for everyone else.
+// Google's EU User Consent Policy does only *require* opt-in for those 32
+// codes. Applying the weaker default everywhere else was still a decision
+// made on the charity's behalf -- that most of its visitors get less
+// protection than its European ones -- and it is the charity, not the
+// template, that is the controller for this site.
 //
-// Before this file existed, GTM loaded on this site with no consent
-// signals at all, so Google's tags behaved the same in every region.
-// Under Consent Mode the Google tags still always load; what changes
-// by region is whether they may use cookies:
+// "Analytics and advertising" is the scope, not a hedge. functionality_storage
+// and security_storage stay GRANTED below: neither carries measurement, and a
+// site that cannot remember a consent choice cannot honour one.
 //
-//   - Outside EEA/UK/CH  → granted immediately; full cookie-based
-//                          measurement, no visitor interaction needed.
-//   - Inside EEA/UK/CH   → denied, so GA4 sends COOKIELESS pings and
-//                          pageviews are modeled rather than lost. This
-//                          site has no consent banner yet, so EEA/UK/CH
-//                          visitors simply stay in that cookieless state
-//                          (nothing ever flips them to granted).
+// WHAT THIS MEANS ON THIS SITE SPECIFICALLY. There is no cookie banner
+// mounted here, so nothing can ever push a `consent update`. Analytics does
+// not become "cookieless until the visitor chooses" the way it does on a
+// fork with a banner -- it becomes cookieless and STAYS cookieless. GA4
+// still counts visits in aggregate; it stores nothing on the device and
+// reads no identifier from it. That is strictly more protective than the
+// previous behaviour and it is deliberately not the full template
+// behaviour. The route to that is mounting the fleet-standard banner.
 //
-// Which default applies is determined by Google from the visitor's IP
-// address at request time — that is documented Consent Mode behavior for
-// the `region` parameter, and the policy pages state it in plain language.
-//
-// NON-Google tags do not speak Consent Mode and would never get the
-// permissive default; this site currently loads no non-Google trackers
-// (no Microsoft Clarity, no Meta Pixel).
-//
-// `wait_for_update` holds tags briefly so a `consent update` (e.g. a
-// stored choice restored by a consent banner) can land before the first
-// hit fires. No banner exists here yet, so nothing pushes an update
-// today; the wait is kept because it is cheap and it means adding the
-// fleet-standard banner later requires no bootstrap change.
-
-/**
- * ISO 3166 region codes where Google's EU User Consent Policy applies:
- * the 27 EU member states + the 3 non-EU EEA states (IS, LI, NO), plus
- * the UK (GB) and Switzerland (CH).
- */
-export const EU_CONSENT_REGIONS = [
-  'AT',
-  'BE',
-  'BG',
-  'HR',
-  'CY',
-  'CZ',
-  'DK',
-  'EE',
-  'FI',
-  'FR',
-  'DE',
-  'GR',
-  'HU',
-  'IE',
-  'IT',
-  'LV',
-  'LT',
-  'LU',
-  'MT',
-  'NL',
-  'PL',
-  'PT',
-  'RO',
-  'SK',
-  'SI',
-  'ES',
-  'SE',
-  // Non-EU EEA
-  'IS',
-  'LI',
-  'NO',
-  // UK + Switzerland
-  'GB',
-  'CH',
-] as const
+// `wait_for_update` is kept even though no update can arrive today. It
+// costs a short hold on the first hit and it means adding the banner later
+// requires no change here.
 
 /**
  * Milliseconds tags wait for a `consent update` before firing with the
@@ -89,23 +42,24 @@ export const CONSENT_WAIT_FOR_UPDATE_MS = 500
  * The inline bootstrap that must execute BEFORE any Google tag loads.
  *
  * Emitted into <head> in the root layout, ahead of <GoogleTagManager />.
- * Two `consent default` calls, in Google's documented order: the
- * region-scoped denial first, then the global grant. Region-specific
- * settings always take precedence over the unscoped one, so EEA/UK/CH
- * visitors get denied-by-default and everyone else gets
- * granted-by-default.
+ * ONE `consent default` call, unscoped, denying analytics and advertising
+ * storage for every visitor. There is no second call: the region-scoped
+ * denial plus unscoped grant this used to emit is Google's documented shape
+ * for "permissive outside the EEA", and both halves of it are gone.
  *
  * `url_passthrough` keeps click ids (gclid/wbraid) flowing through
- * navigation when cookies are denied, and `ads_data_redaction` strips ad
- * identifiers from tag requests while `ad_storage` is denied — both are
- * no-ops once consent is granted, so they cost nothing outside the EEA.
+ * navigation while cookies are denied, and `ads_data_redaction` strips ad
+ * identifiers from tag requests while `ad_storage` is denied. Both are
+ * no-ops once consent is granted. Note what url_passthrough does and does
+ * not carry: a click id that is ALREADY in the visitor's URL travels
+ * between pages of this site, which is why the policy wording is "no
+ * identifiers from your device" rather than the flatter, false "no
+ * identifiers".
  *
- * `wait_for_update` is set on BOTH default calls, matching the canary
- * reference (FFC-EX-canary): there GTM loads from the layout, so a
- * returning visitor's stored choice needs a window to be restored before
- * tags evaluate consent. This site has no banner and therefore no stored
- * choices yet; keeping the waits preserves byte-level parity with the
- * fleet standard and makes a later banner drop-in.
+ * `wait_for_update` is kept on the single call. This site mounts no banner,
+ * so no update can arrive and the wait currently buys nothing; it is
+ * retained so that adding the fleet-standard banner later needs no change
+ * here.
  *
  * Declared as a function declaration so `gtag` lands on `window` and every
  * later caller shares one queue.
@@ -120,17 +74,6 @@ gtag('consent', 'default', {
   'analytics_storage': 'denied',
   'functionality_storage': 'granted',
   'personalization_storage': 'denied',
-  'security_storage': 'granted',
-  'wait_for_update': ${CONSENT_WAIT_FOR_UPDATE_MS},
-  'region': ${JSON.stringify([...EU_CONSENT_REGIONS])}
-});
-gtag('consent', 'default', {
-  'ad_storage': 'granted',
-  'ad_user_data': 'granted',
-  'ad_personalization': 'granted',
-  'analytics_storage': 'granted',
-  'functionality_storage': 'granted',
-  'personalization_storage': 'granted',
   'security_storage': 'granted',
   'wait_for_update': ${CONSENT_WAIT_FOR_UPDATE_MS}
 });
@@ -159,11 +102,14 @@ declare global {
  *
  * This site has no consent banner yet, so nothing calls this today; it is
  * exported so the fleet-standard banner can be added later without
- * touching this file. When called, it is what lifts the regional default
- * from denied to granted for an EEA/UK/CH visitor; for everyone else it
- * mostly re-affirms the granted default, and only matters when they
- * actively DECLINE — at which point storage flips to denied and GA4 falls
- * back to cookieless pings rather than disappearing entirely.
+ * touching this file. That is not a detail: the default below is now DENIED
+ * for everyone, and this function is the only thing that could ever lift
+ * it. Until a banner mounts and calls it, analytics on this site is
+ * cookieless permanently rather than "until the visitor chooses".
+ *
+ * It used to read that this lifts the regional default for an EEA/UK/CH
+ * visitor and merely re-affirms a granted default for everyone else. There
+ * is no granted default left to re-affirm.
  */
 export function updateGoogleConsent(prefs: ConsentPreferences): void {
   if (typeof window === 'undefined' || typeof window.gtag !== 'function') return
