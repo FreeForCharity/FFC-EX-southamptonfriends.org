@@ -142,7 +142,6 @@ The Lighthouse CI configuration is in `lighthouserc.json`:
       "staticDistDir": "./out",
       "url": [
         "http://localhost/index.html",
-        "http://localhost/cookie-policy/",
         "http://localhost/privacy-policy/",
         "http://localhost/terms-of-service/"
       ],
@@ -152,7 +151,7 @@ The Lighthouse CI configuration is in `lighthouserc.json`:
 }
 ```
 
-**Important**: URLs must match what the export actually writes. This site sets `trailingSlash: true`, so a route is emitted as `<route>/index.html` and the collect URL is `/<route>/` — **not** `<route>.html`. Getting this wrong is not a partial failure: `lhci autorun` aborts the whole run on the first URL that 404s. This site has a single homepage with sections (About Us, Donate, Volunteer) rather than separate pages for those features.
+**Important**: URLs must match what the export actually writes. This site sets `trailingSlash: true`, so a route is emitted as `<route>/index.html` and the collect URL is `/<route>/` — **not** `<route>.html`. Getting this wrong is not a partial failure: `lhci autorun` aborts the whole run on the first URL that 404s.
 
 You can add more pages to audit by adding URLs to the `url` array. To see which pages are generated, check the `out/` directory after running `pnpm run build`.
 
