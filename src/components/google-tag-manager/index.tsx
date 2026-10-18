@@ -6,7 +6,12 @@ import { analyticsConfig } from '@/lib/analytics.config'
 // Google Tag Manager ID
 const GTM_ID = analyticsConfig.gtmId
 
+// Only inject GTM for a well-formed container id (guards unconfigured forks and any
+// future refactor that reads the id from a less-trusted source).
+const isValidGtmId = /^GTM-[A-Z0-9]+$/.test(GTM_ID)
+
 export default function GoogleTagManager() {
+  if (!isValidGtmId) return null
   return (
     <>
       {/* Google Tag Manager Script - loaded with lazyOnload for better performance */}
@@ -29,6 +34,7 @@ export default function GoogleTagManager() {
 
 // Export a component for the noscript iframe that goes in the body
 export function GoogleTagManagerNoScript() {
+  if (!isValidGtmId) return null
   return (
     <noscript>
       <iframe
